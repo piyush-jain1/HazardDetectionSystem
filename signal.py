@@ -58,6 +58,8 @@ while True:
 			temperature = float(line[0])
 			vibration = float(line[1])
 			gas = float(line[2])
+			with open("./temp_reading.txt", "w+") as output:
+				output.write(str(temperature))
 			if(temp_wait or vibration_wait or gas_wait):
 				ser.write("0")
 			else:
@@ -67,10 +69,10 @@ while True:
 					start = time.time()
 					temp_wait = 1
 				elif(vibration > 3.0 and earthquake_active == 1):
-					ser.write("0")
-#					start = time.time()
+					ser.write("2")
+					start = time.time()
 					flag = 1
-#					vibration_wait = 1
+					vibration_wait = 1
 				elif(gas >= 250.0 and gas_active == 1):
 					ser.write("3")
 					flag = 1
