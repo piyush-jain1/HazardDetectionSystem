@@ -153,7 +153,11 @@ while True:
 						start = time.time()
 						flag = 1
 						vibration_wait = 1
+<<<<<<< HEAD
+					elif(gas <= 0.4 and gas_active == 1):
+=======
 					elif(gas >= 250.0 and gas_active == 1):
+>>>>>>> 6865bcf1c1ccf1019ef9e98c3012ec114a7f3ece
 						#ring buzzer for gas leakage
 						ser.write("3")
 						flag = 1
@@ -177,4 +181,8 @@ while True:
 	
 mqttc.loop_stop()
 mqtt.disconnect()	
+<<<<<<< HEAD
 ser.close()
+=======
+ser.close()
+>>>>>>> 6865bcf1c1ccf1019ef9e98c3012ec114a7f3ece
