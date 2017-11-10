@@ -177,8 +177,5 @@ while True:
 	
 mqttc.loop_stop()
 mqtt.disconnect()	
-<<<<<<< HEAD
 ser.close()
-=======
-ser.close()
->>>>>>> 6865bcf1c1ccf1019ef9e98c3012ec114a7f3ece
+
