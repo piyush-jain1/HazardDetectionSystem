@@ -9,15 +9,11 @@ import paho.mqtt.publish as publish
 MQTT_BROKER = "192.168.1.101"
 MQTT_PORT = 1883
 MQTT_KEEPALIVE_INTERVAL = 45
-# Topic for sending sensor data
 MQTT_TOPIC = "Hazard"
-
-#Topics for receiving sensor's activation from user
-MQTT_TOPIC_FIRE = "fire_active"	
+MQTT_TOPIC_FIRE = "fire_active"
 MQTT_TOPIC_GAS = "gas_active"
 MQTT_TOPIC_EARTHQUAKE = "earthquake_active"
 
-#subtopics to send
 TOPICS = ["Gas", "Temperature", "Vibration"]
 
 ser = serial.Serial(
@@ -32,7 +28,7 @@ print("connected to: " + ser.portstr)
 
 # Define on_connect event Handler
 def on_connect(mosq, obj, rc):
-	#Subscribe to all the Topic
+	#Subscribe to a the Topic
 	mqttc.subscribe(MQTT_TOPIC, 0)
 	mqttc.subscribe(MQTT_TOPIC_FIRE, 0)
 	mqttc.subscribe(MQTT_TOPIC_GAS, 0)
@@ -68,7 +64,7 @@ def on_message(mosq, obj, msg):
 			print "earthquake alarm enabled"
 		elif (msg.payload == "off"):
 			earthquake_active = 0
-			print "earthuake alarm disabled"
+			print "earthuake alaem disabled"
 	else:
 		print msg.payload
 
@@ -99,7 +95,8 @@ vibration_wait = 0
 fire_active = 1
 gas_active = 1
 earthquake_active  = 1
-
+vibration = 0
+temp_last_non_zero = 0
 #this will store the line
 line = []
 values = {}
@@ -107,6 +104,7 @@ flag = 0
 ser.write("0")
 start = time.time()
 last = time.time()
+temperature = 0
 while True:
 	
 	if(temp_wait or vibration_wait or gas_wait):
@@ -115,6 +113,25 @@ while True:
 			vibration_wait = 0
 			gas_wait = 0
 
+	'''#setting user preference by use of web interface
+	file = open("userpref.txt", "r")
+	pref = file.readline()
+	if len(pref) > 0 : 
+		sett = pref.split()
+		if(sett[0] == '0'):
+			fire_active = 0 
+		else: 
+			fire_active  = 1
+		if(sett[1] == '0'):
+			earthquake_active = 0
+		else:
+			earthquake_active = 1
+		if(sett[2] == '0'):
+			gas_active = 0
+		else:
+			gas_active = 1
+	file.close()
+	'''
 	#reading serial port input (sensor data) received by xbee from remote xbee
 	#reading till it is available
 	while ser.inWaiting():
@@ -127,9 +144,11 @@ while True:
 				temperature = float(line[0])
 				vibration = float(line[1])
 				gas = float(line[2])
-
+				if(temperature > 0):
+					temp_last_non_zero = temperature
 				#data to publish
-				values['Temperature']=temperature
+
+				values['Temperature']=temp_last_non_zero
 				values['Gas']=gas
 				values['Vibration']=vibration
 
@@ -140,42 +159,47 @@ while True:
 				#sending response to remote xbee/arduino
 				if(temp_wait or vibration_wait or gas_wait):
 					ser.write("0")
+					print "0 sent"
 				else:
-					if(temperature >= 27.0 and fire_active == 1):
+					if(temperature >= 28.0 and fire_active == 1):
 						#ring buzzer for fire
 						ser.write("1")
+						print "1 sent"
 						flag = 1
 						start = time.time()
 						temp_wait = 1
 					elif(vibration > 3.0 and earthquake_active == 1):
 						#ring buzzerr for earthquake
+						print "Vibration threshold"
 						ser.write("2")
+						print "2 sent"
 						start = time.time()
 						flag = 1
 						vibration_wait = 1
-					elif(gas <= 0.4 and gas_active == 1):
+					elif(gas <= 3.90 and gas_active == 1):
 						#ring buzzer for gas leakage
 						ser.write("3")
+						print "3 sent"
 						flag = 1
 						start = time.time()
 						gas_wait = 1
 					if (flag == 0 ):
 						ser.write("0")
+						print "0 sent"
 					flag = 0
 				with open("./hazard.txt","a+") as output:
 					output.write(str1+"\n")
 				line = []
 				break
 
-	#sending the last input to mqtt broker at interval of 2 seconds.
-	if(time.time()-last>2 and temperature > 0):
+	#sending the last input to mqtt broker
+	if(time.time()-last>2.0 or vibration >= 3.0):
 		last = time.time()
 		msgs = get_msgs(values);
-		print msgs
+		#print msgs
 		if (len(msgs)>0): 
 			publish.multiple(msgs, hostname=MQTT_BROKER, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE_INTERVAL);
 	
 mqttc.loop_stop()
 mqtt.disconnect()	
 ser.close()
-
